@@ -80,9 +80,6 @@ export default class Layout extends React.Component {
             bottom: 2px;
             right: 2px;
           }
-          #popupTable {
-            display: none;
-          }
           @media only screen and (max-width: 500px) {
             .mapboxgl-popup-tip {
               visibility: hidden;
@@ -113,9 +110,12 @@ export default class Layout extends React.Component {
             min-width: 100%;
           }
           .mapboxgl-ctrl-geocoder--button {
+            display: none !important;
+          }
+          .mapboxgl-ctrl-geocoder--icon.mapboxgl-ctrl-geocoder--icon-loading {
             display: none;
           }
-          .mapboxgl-ctrl-geocoder--icon .mapboxgl-ctrl-geocoder--icon-loading {
+          .mapboxgl-ctrl-geocoder--icon.mapboxgl-ctrl-geocoder--icon-search {
             display: none;
           }
           .geocoder-icon {
@@ -148,7 +148,7 @@ export default class Layout extends React.Component {
                 className="d-inline-block text-uppercase font-weight-bold mb-0 mt-1"
                 style={{ letterSpacing: '1px' }}
               >
-                Abutters App
+                Abutters Application
               </h1>
             </div>
             <img src="" style={{ width: '10em' }} />

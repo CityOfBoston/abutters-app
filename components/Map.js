@@ -14,7 +14,7 @@ const { featureLayer } = process.browser ? require('esri-leaflet') : {};
 const L = process.browser ? require('leaflet') : {};
 
 const parcels_url =
-  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels/FeatureServer/0';
+  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_3857/FeatureServer/0';
 
 class Map extends React.Component {
   constructor(props) {
@@ -27,10 +27,53 @@ class Map extends React.Component {
   }
 
   componentDidMount() {
-    // TODO: might not need this
     this.parcelFeatureLayer = featureLayer({
       url: parcels_url,
     });
+
+    // We update the selected parcel in two circumstances:
+    //  1. Someone clicks on the map
+    //  2. A searched address location is within a parcel.
+    // Because there are two differnet time we're doing the same thing,
+    // we break it out into its own function.
+    const setSelectedParcel = eventLocation => {
+      // We use Esri Leaflet to query the parcel feature layer. We're
+      // specifically asking for what parcel contains the clicked location.
+      this.parcelFeatureLayer
+        .query()
+        .contains(eventLocation)
+        .run((error, featureCollection) => {
+          if (error) {
+            // eslint-disable-next-line no-console
+            console.error(error);
+            return;
+          }
+          // By definition, the spatial parcel layer has no parcels that overlap
+          // eachother, so we're safe to select the first feature in the returned
+          // collection of them.
+          const selectedParcel = featureCollection.features[0];
+
+          // If the user didn't click a location outside the parcel layer's
+          // geometry, we highlight the parcel they selected.
+          if (selectedParcel !== undefined) {
+            this.map.getSource('highlight').setData(selectedParcel.geometry);
+
+            // So that we can display the selected parcel ID on the side of the map,
+            // we pass the change to the MapContainer component which can then pass
+            // it down to the Filters component.
+            this.props.handleParcelChange(selectedParcel.properties.PID_LONG);
+
+            // We also hold the selected parcel itself (geometry and all)
+            // inside the applications state. This allows us to access it when
+            // the user updates or changes the buffer distance.
+            this.setState({
+              selectedParcel: selectedParcel,
+            });
+          } else {
+            return;
+          }
+        });
+    };
 
     this.map = new mapboxgl.Map({
       container: this.mapContainer,
@@ -101,7 +144,7 @@ class Map extends React.Component {
       // matches in and around Boston, MA.
       // We need the minX, minY, maxX, maxY in that order.
       bbox: [-71.216812, 42.226992, -70.986099, 42.395573],
-      zoom: 19,
+      zoom: 18,
     });
 
     // We want the geocoder div to show up in the Filters component so we've added
@@ -110,10 +153,12 @@ class Map extends React.Component {
     document.getElementById('geocoder').appendChild(geocoder.onAdd(this.map));
 
     this.map.on('load', () => {
-      // When the map loads, we load up the icon we're using for showing
-      // geocoder results.
+      // When the map loads, we do a lot of of setting up so that we have layers
+      // to update when the user starts interacting with the map.
+
+      // For starters, we load up the icon we're using for showing geocoder results.
       this.map.loadImage(
-        // should be this in prod '/capital-projects/static/red-waypoint.png',
+        // TODO: should be this in prod: '/capital-projects/static/red-waypoint.png',
         '/static/red-waypoint.png',
         (error, image) => {
           if (error)
@@ -126,7 +171,123 @@ class Map extends React.Component {
         }
       );
 
-      // We add an empty geojson source and layer that we'll populate
+      // We add another empty geojson source for the buffer polygon. We'll
+      // use this layer to display the buffer around the selected parcel.
+      // We add a fill and line layer that both use this same source so we have
+      // more granular control over the styling.
+      // The order that these layers are added in defines their drawing order on
+      // the map, so we add the ones we want on the bottom first.
+      this.map.addSource('buffer', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [],
+        },
+      });
+
+      this.map.addLayer({
+        id: 'buffer-polygon',
+        source: 'buffer',
+        type: 'fill',
+        paint: {
+          'fill-color': '#D2D2D2',
+          'fill-outline-color': '#58585B',
+          'fill-opacity': 0.5,
+        },
+      });
+
+      this.map.addLayer({
+        id: 'buffer-line',
+        source: 'buffer',
+        type: 'line',
+        paint: {
+          'line-width': 2,
+          'line-color': '#58585B',
+        },
+        layout: {
+          'line-cap': 'round',
+          'line-join': 'round',
+        },
+      });
+
+      // We do the same thing as above for the parcels that intersect the
+      // buffer - add one source and two layers (line and poylgon) for
+      // styling.
+      this.map.addSource('buffer-parcels', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [],
+        },
+      });
+
+      this.map.addLayer({
+        id: 'buffer-parcels-polygon',
+        type: 'fill',
+        source: 'buffer-parcels',
+        layout: {},
+        paint: {
+          'fill-color': '#288BE4',
+          'fill-opacity': 0.5,
+        },
+        minzoom: 0,
+        maxzoom: 24,
+      });
+
+      this.map.addLayer({
+        id: 'buffer-parcels-line',
+        source: 'buffer-parcels',
+        type: 'line',
+        paint: {
+          'line-width': 2.5,
+          'line-color': '#1f6eb5',
+        },
+        layout: {
+          'line-cap': 'round',
+          'line-join': 'round',
+        },
+      });
+
+      // Since we're using lines and polygons to represent the parcels, we want
+      // features of all geometries to get highlighted when a user clicks on them,
+      // we add two more layers: a highlight-line layer and a highlight-polygon layer.
+
+      // All layers stary out as empty, we style them here then add
+      // data to them when a user clicks on a feature.
+      this.map.addSource('highlight', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [],
+        },
+      });
+
+      this.map.addLayer({
+        id: 'highlight-line',
+        source: 'highlight',
+        type: 'line',
+        paint: {
+          'line-width': 6,
+          'line-color': '#FB4D42',
+        },
+        layout: {
+          'line-cap': 'round',
+          'line-join': 'round',
+        },
+      });
+
+      this.map.addLayer({
+        id: 'highlight-polygon',
+        source: 'highlight',
+        type: 'fill',
+        paint: {
+          'fill-color': '#FB4D42',
+          'fill-outline-color': '#FB4D42',
+          'fill-opacity': 0.5,
+        },
+      });
+
+      // Finally, we add an empty geojson source and layer that we'll populate
       // with the results of the geocoding search when appropriate.
       this.map.addSource('geocoding-result-point', {
         type: 'geojson',
@@ -141,253 +302,78 @@ class Map extends React.Component {
         source: 'geocoding-result-point',
         type: 'symbol',
         layout: {
+          visibility: 'none',
+          // We use the icon image we loaded above here.
           'icon-image': 'red-waypoint',
           'icon-size': 0.25,
         },
       });
-
-      // We add another empty geojson source for the buffer polygon.
-      this.map.addSource('buffer', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: [],
-        },
-      });
-
-      this.map.addLayer({
-        id: 'bufferPoly',
-        source: 'buffer',
-        type: 'fill',
-        paint: {
-          'fill-color': 'blue',
-          'fill-outline-color': '#091F2F',
-          'fill-opacity': 0.7,
-        },
-      });
-
-      // this.map.addSource('parcels', {
-      //   type: 'geojson',
-      //   data: {
-      //     type: 'FeatureCollection',
-      //     features: [],
-      //   },
-      //   //data: `${parcels_url}/query?where=1%3D1&outFields=*&outSR=4326&returnExceededLimitFeatures=true&f=pgeojson`,
-      // });
-
-      // this.map.addSource('clickedParcel', {
-      //   type: 'geojson',
-      //   data: {
-      //     type: 'FeatureCollection',
-      //     features: [],
-      //   },
-      //   //data: `${parcels_url}/query?where=1%3D1&outFields=*&outSR=4326&returnExceededLimitFeatures=true&f=pgeojson`,
-      // });
-
-      // this.map.addLayer({
-      //   id: 'clickedParcelPoly',
-      //   type: 'fill',
-      //   source: 'clickedParcel',
-      //   layout: {},
-      //   paint: {
-      //     'fill-color': 'pink',
-      //   },
-      //   minzoom: 15,
-      //   maxzoom: 24,
-      // });
-
-      this.map.addSource('bufferParcels', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: [],
-        },
-      });
-
-      this.map.addLayer({
-        id: 'bufferParcelsLayer',
-        type: 'fill',
-        source: 'bufferParcels',
-        layout: {},
-        paint: {
-          'fill-color': '#32a852',
-        },
-        minzoom: 0,
-        maxzoom: 24,
-      });
-
-      // this.map.addLayer({
-      //   id: 'parcels-polygon',
-      //   type: 'fill',
-      //   source: 'parcels',
-      //   layout: {},
-      //   paint: {
-      //     'fill-color': '#7f32a8',
-      //   },
-      //   minzoom: 15,
-      //   maxzoom: 24,
-      // });
-
-      // this.map.addLayer({
-      //   id: 'parcels-line',
-      //   type: 'line',
-      //   source: 'parcels',
-      //   layout: {},
-      //   paint: {
-      //     'line-color': '#091F2F',
-      //   },
-      //   minzoom: 15,
-      //   maxzoom: 24,
-      // });
-
-      // Since we're using lines and polygons to represent the parcels, we want
-      // features of all geometries to get highlighted when a user clicks on them,
-      // we add two more layers: a highlight-line layer and a highlight-polygon layer.
-
-      // All layers stary out as empty, we style them here then add
-      // data to them when a user clicks on a feature.
-      this.map.addSource('highlight-line', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: [],
-        },
-      });
-
-      this.map.addLayer({
-        id: 'highlight-line',
-        source: 'highlight-line',
-        type: 'line',
-        paint: {
-          'line-width': 6,
-          'line-color': '#FB4D42',
-        },
-        layout: {
-          'line-cap': 'round',
-        },
-      });
-
-      this.map.addSource('highlight-polygon', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: [],
-        },
-      });
-
-      this.map.addLayer({
-        id: 'highlight-polygon',
-        source: 'highlight-polygon',
-        type: 'fill',
-        paint: {
-          'fill-color': '#FB4D42',
-          'fill-outline-color': '#091F2F',
-          'fill-opacity': 0.7,
-        },
-      });
     });
 
+    // When the geocoder finds a result, we add our red-waypoint icon
+    // to the map at the addresses' location and update the selected parcel.
     geocoder.on('result', function(ev) {
       geocoder._map
+        .setLayoutProperty('geocoding-result', 'visibility', 'visible')
         .getSource('geocoding-result-point')
         .setData(ev.result.geometry);
+      setSelectedParcel(ev.result.geometry);
     });
 
     this.map.on('click', e => {
-      // Parcels don't overlap eachother, so we can grab the first point
-      // clicked on.
-      //const feature = this.map.queryRenderedFeatures(e.point)[0];
+      // When the user clicks in a new location on the map, we clear
+      // the existing layers.
+      this.map.setLayoutProperty('geocoding-result', 'visibility', 'none');
+      this.map.setLayoutProperty(
+        'buffer-parcels-polygon',
+        'visibility',
+        'none'
+      );
+      this.map.setLayoutProperty('buffer-parcels-line', 'visibility', 'none');
+      this.map.setLayoutProperty('buffer-polygon', 'visibility', 'none');
+      this.map.setLayoutProperty('buffer-line', 'visibility', 'none');
 
-      // When someone clicks on the map, we query the parcel layer for
-      // which parcel they clicked on.
-      this.parcelFeatureLayer
-        .query()
-        .contains(L.latLng(e.lngLat))
-        .run((error, featureCollection) => {
-          if (error) {
-            // eslint-disable-next-line no-console
-            console.error(error);
-            return;
-          }
-          const selectedParcel = featureCollection.features[0];
-          if (selectedParcel !== undefined) {
-            console.log(selectedParcel);
-            // highlight the selected parcel
-            this.map
-              .getSource('highlight-polygon')
-              .setData(selectedParcel.geometry);
-
-            // pass the PID to state
-            this.props.handleParcelChange(selectedParcel.properties.PID_LONG);
-            // make the selected parcel also state
-            this.setState({
-              selectedParcel: selectedParcel,
-            });
-          } else {
-            return;
-          }
-        });
-
-      // Update state
-
-      //const clickedParcelURL = `${parcels_url}/query?where=&objectIds=&time=&geometry=${long}%2C+${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&resultType=standard&distance=0.0&units=esriSRUnit_Foot&returnGeodetic=false&outFields=*&returnHiddenFields=false&returnGeometry=true&returnCentroid=false&featureEncoding=esriDefault&multipatchOption=xyFootprint&maxAllowableOffset=&geometryPrecision=&outSR=4326&datumTransformation=&applyVCSProjection=false&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnExtentOnly=false&returnQueryGeometry=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&returnZ=false&returnM=false&returnExceededLimitFeatures=true&quantizationParameters=&sqlFormat=none&f=pgeojson`;
-      //this.map.getSource('clickedParcel').setData(clickedParcelURL);
-
-      //this.map.setLayoutProperty('highlight-line', 'visibility', 'none');
-      //this.map.setLayoutProperty('highlight-polygon', 'visibility', 'none');
-
-      // We don't want the red waypoint icon to highlight if a user clicks
-      // on it, so we first check to make sure the user clicked on a feature
-      // then we check to make sure that feature isn't the geocoding result.
-      // The same goes for the highlight layers we've added.
-      // if (
-      //   feature &&
-      //   feature.layer.id != 'geocoding-result' &&
-      //   feature.layer.id != 'highlight-line' &&
-      //   feature.layer.id != 'highlight-polygon'
-      // ) {
-      //   const coordinates = [e.lngLat.lng, e.lngLat.lat];
-      //   // const highlightLayer =
-      //   //   feature.layer.id == 'parcel-line'
-      //   //     ? 'highlight-line'
-      //   //     : 'highlight-polygon';
-      //   //this.map.setLayoutProperty(highlightLayer, 'visibility', 'visible');
-
-      //   new mapboxgl.Popup({ closeOnClick: true })
-      //     .setLngLat(coordinates)
-      //     .setHTML(
-      //       `<div style="min-width: 280px; max-width: 500px;">
-      //       ${feature.properties.PID_LONG}
-      //       </div>`
-      //     )
-      //     .addTo(this.map);
-      // } else {
-      //   this.setState({ showTable: false });
-      // }
+      // We convert the longitude/latitude of the click location to a
+      // Leaflet point object so that we can use it to figure out which
+      // parcel was clicked on.
+      const clickLocation = L.latLng(e.lngLat);
+      setSelectedParcel(clickLocation);
     });
-
-    // When we scroll over a point, change the mouse to a pointer.
-    // this.map.on('mousemove', e => {
-    //   const features = this.map.queryRenderedFeatures(e.point, {
-    //     layers: ['parcels-polygon'],
-    //   });
-
-    //   features.length > 0
-    //     ? (this.map.getCanvas().style.cursor = 'pointer')
-    //     : (this.map.getCanvas().style.cursor = '');
-    // });
   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.bufferDistance !== this.props.bufferDistance) {
-      const bufferDistanceFeet = this.props.bufferDistance * 0.000189393939;
-      console.log({ bufferDistanceFeet });
-      const bufferPoly = buffer(this.state.selectedParcel, bufferDistanceFeet, {
-        unit: 'miles',
-      });
-      this.map.getSource('buffer').setData(bufferPoly.geometry);
-      console.log(bufferPoly.geometry);
+      // As the buffer changes, we update the visability of the
+      // relevant map layers.
+      this.map.setLayoutProperty(
+        'buffer-parcels-polygon',
+        'visibility',
+        'visible'
+      );
+      this.map.setLayoutProperty(
+        'buffer-parcels-line',
+        'visibility',
+        'visible'
+      );
+      this.map.setLayoutProperty('buffer-polygon', 'visibility', 'visible');
+      this.map.setLayoutProperty('buffer-line', 'visibility', 'visible');
 
+      // We're currently using Turf.js to create the buffers and feet isn't an
+      // option for units, so we convert the entered value to kilometers.
+      // We then use Turf's buffer function to calculate the new geometry and
+      // display it on the map.
+      // TODO: Change to using ESRI buffer rest api.
+      const bufferDistanceFeet = this.props.bufferDistance * 0.0003048;
+      const bufferPoly = buffer(
+        this.state.selectedParcel,
+        bufferDistanceFeet,
+        'kilometers'
+      );
+
+      this.map.getSource('buffer').setData(bufferPoly.geometry);
+
+      // After we have the buffer, we use its geometry to find the parcels
+      // that intersect it.
       this.parcelFeatureLayer
         .query()
         .intersects(bufferPoly.geometry)
@@ -397,9 +383,11 @@ class Map extends React.Component {
             console.error(error);
             return;
           }
-          console.log(featureCollection);
-          this.map.getSource('bufferParcels').setData(featureCollection);
-          // Set state
+
+          this.map.getSource('buffer-parcels').setData(featureCollection);
+          // We save them to our state so we can use them in the filter
+          // component when we are building the mailing list CSV the user
+          // will download.
           this.props.handleBufferParcels(featureCollection.features);
         });
     }
@@ -430,4 +418,5 @@ Map.propTypes = {
   handleParcelChange: PropTypes.func,
   selectedParcel: PropTypes.object,
   bufferDistance: PropTypes.number,
+  handleBufferParcels: PropTypes.func,
 };

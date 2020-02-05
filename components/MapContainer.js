@@ -16,20 +16,21 @@ class MapContainer extends React.Component {
     };
   }
 
-  // Update state when parcel is selected
+  // Update state when parcel is selected.
   handleParcelChange = p => {
     this.setState({
       selectedParcelPID: p,
     });
   };
 
-  // Update state when buffer distance is set
+  // Update state when buffer distance is updated.
   handleBufferChange = e => {
     this.setState({
       bufferDistance: e.target.value,
     });
   };
 
+  // Update state when we have parcels for the mailing list.
   handleBufferParcels = parcels => {
     this.setState({
       bufferParcels: parcels,

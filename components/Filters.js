@@ -1,19 +1,31 @@
 import React from 'react';
 import { Card, Form, Input, Label, FormGroup } from 'reactstrap';
 import PropTypes from 'prop-types';
-import { CSVLink, CSVDownload } from 'react-csv';
+import { CSVLink } from 'react-csv';
 
 export default function Filters(props) {
-  const csvData = props.bufferParcels;
+  // We set up an empty array to house the data we'll export to csv.
+  const csvData = [];
+  // TODO: figure out what fields are actually needed here.
+  props.bufferParcels.forEach(feature => csvData.push(feature.properties));
+
   return (
     <div>
       <Card className="border-0 pt-4 ml-1 mr-2">
+        <Label htmlFor="geocoder" className="font-weight-bold text-uppercase">
+          Address Search
+        </Label>
         <div id="geocoder" style={{ width: '100%' }} />
       </Card>
-      <Card className="border-0 pt-2 ml-1 mr-2 pb-3">
+      <Card className="border-0 pt-5 ml-1 mr-2 pb-3">
         <Form className="m-1">
           <FormGroup>
-            <h5 className="font-weight-bold text-uppercase">Selected Parcel</h5>
+            <Label
+              htmlFor="selectedParcelID"
+              className="font-weight-bold text-uppercase"
+            >
+              Selected Parcel
+            </Label>
             <p>{props.selectedParcelPID}</p>
             <Label
               htmlFor="bufferDistance"
@@ -32,19 +44,18 @@ export default function Filters(props) {
               className="mb-2"
             />
           </FormGroup>
+          <Label
+            htmlFor="bufferDistance"
+            className="font-weight-bold text-uppercase"
+          >
+            {/* We only show the csv download link if they array has info in it. */}
+            {csvData.length > 0 ? (
+              <CSVLink data={csvData} filename={'mailingList.csv'}>
+                Download Mailing List CSV
+              </CSVLink>
+            ) : null}
+          </Label>
         </Form>
-      </Card>
-      <Card>
-        <div className="dl-t">
-          {props.bufferParcels
-            .map(parcel => `parcel: ${parcel.properties.PID_LONG} <br/>`)
-            .join('')}
-        </div>
-      </Card>
-      <Card>
-        <CSVLink data={csvData} filename={'mailingList.csv'}>
-          Download CSV Here
-        </CSVLink>
       </Card>
     </div>
   );

@@ -158,8 +158,7 @@ class Map extends React.Component {
 
       // For starters, we load up the icon we're using for showing geocoder results.
       this.map.loadImage(
-        // TODO: should be this in prod: '/capital-projects/static/red-waypoint.png',
-        '/static/red-waypoint.png',
+        '/abutters-app/static/red-waypoint.png',
         (error, image) => {
           if (error)
             // eslint-disable-next-line no-console

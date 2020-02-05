@@ -7,7 +7,7 @@ export default class IndexPage extends React.Component {
   render() {
     return (
       <div>
-        <Layout title="Vision Zero Boston" indexPage>
+        <Layout title="Abutters App" indexPage>
           <div>
             <Col>
               <MapContainer />

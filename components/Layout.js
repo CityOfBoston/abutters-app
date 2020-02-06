@@ -139,6 +139,14 @@ export default class Layout extends React.Component {
           .suggestions li:hover {
             background-color: #e0e0e0;
           }
+          // button styles
+          .btn {
+            border-radius: 0px;
+          }
+          .btn-secondary {
+            background-color: #288be4;
+            border-color: #288be4;
+          }
         `}</style>
         {/* set container div with room for navbar  */}
         <div style={{ minHeight: 'calc(100vh - 125px)' }}>

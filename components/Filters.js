@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Form, Input, Label, FormGroup } from 'reactstrap';
+import { Card, Form, Input, Label, FormGroup, Button } from 'reactstrap';
 import PropTypes from 'prop-types';
 import { CSVLink } from 'react-csv';
 
@@ -18,6 +18,25 @@ export default function Filters(props) {
         <div id="geocoder" style={{ width: '100%' }} />
       </Card>
       <Card className="border-0 pt-5 ml-1 mr-2 pb-3">
+        <Form className="m-1">
+          <Label
+            htmlFor="parcelIdSearch"
+            className="font-weight-bold text-uppercase"
+          >
+            Parcel Search
+          </Label>
+          <Input
+            id="parcelIdSearch"
+            type="text"
+            onChange={props.handleParcelIDSearch}
+            name="parcelID"
+            value={props.searchedParcelID}
+            className="mb-2"
+          ></Input>
+          <Button onClick={props.searchForParcel}>Search</Button>
+        </Form>
+      </Card>
+      <Card className="border-0 pt-2 ml-1 mr-2 pb-3">
         <Form className="m-1">
           <FormGroup>
             <Label
@@ -43,6 +62,7 @@ export default function Filters(props) {
               value={props.bufferDistance}
               className="mb-2"
             />
+            <Button onClick={props.updateParcelBuffer}>Buffer Parcels</Button>
           </FormGroup>
           <Label
             htmlFor="bufferDistance"
@@ -65,4 +85,8 @@ Filters.propTypes = {
   handleBufferChange: PropTypes.func,
   bufferDistance: PropTypes.number,
   bufferParcels: PropTypes.array,
+  updateParcelBuffer: PropTypes.func,
+  handleParcelIDSearch: PropTypes.func,
+  searchedParcelID: PropTypes.string,
+  searchForParcel: PropTypes.func,
 };

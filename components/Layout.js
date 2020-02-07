@@ -51,6 +51,10 @@ export default class Layout extends React.Component {
             font-family: 'Lora';
             font-size: 18px;
           }
+          p {
+            font-style: italic;
+            color: #616161;
+          }
           // update link styles
           a:hover {
             text-decoration: none;
@@ -138,6 +142,24 @@ export default class Layout extends React.Component {
           }
           .suggestions li:hover {
             background-color: #e0e0e0;
+          }
+          // button styles
+          .btn {
+            border-radius: 0px;
+          }
+          .btn-secondary {
+            background-color: #288be4;
+            border-color: #288be4;
+          }
+          .btn-secondary:focus {
+            box-shadow: 0 0 0 0.2rem rgba(40, 139, 228, 0.5);
+          }
+          .btn-secondary:not(:disabled):not(.disabled):active {
+            background-color: #288be4;
+            border-color: #288be4;
+          }
+          .btn:hover:not(:disabled) {
+            border-color: #fb4d42;
           }
         `}</style>
         {/* set container div with room for navbar  */}

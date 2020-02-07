@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Form, Input, Label, FormGroup, Button } from 'reactstrap';
+import { Card, Form, FormGroup, Input, Label, Button } from 'reactstrap';
 import PropTypes from 'prop-types';
 import { CSVLink } from 'react-csv';
 
@@ -7,18 +7,21 @@ export default function Filters(props) {
   // We set up an empty array to house the data we'll export to csv.
   const csvData = [];
   // TODO: figure out what fields are actually needed here.
-  props.bufferParcels.forEach(feature => csvData.push(feature.properties));
+  if (props.ownershipInfo.length > 1) {
+    props.ownershipInfo.forEach(parcel => csvData.push(parcel.properties));
+  }
 
   return (
     <div>
       <Card className="border-0 pt-4 ml-1 mr-2">
-        <Label htmlFor="geocoder" className="font-weight-bold text-uppercase">
+        <Label
+          htmlFor="geocoder"
+          className="font-weight-bold text-uppercase m-1"
+        >
           Address Search
         </Label>
-        <div id="geocoder" style={{ width: '100%' }} />
-      </Card>
-      <Card className="border-0 pt-5 ml-1 mr-2 pb-3">
-        <Form className="m-1">
+        <div id="geocoder" style={{ width: '100%' }} className="m-1" />
+        <FormGroup className="m-1 pt-3">
           <Label
             htmlFor="parcelIdSearch"
             className="font-weight-bold text-uppercase"
@@ -33,19 +36,25 @@ export default function Filters(props) {
             value={props.searchedParcelID}
             className="mb-2"
           ></Input>
-          <Button onClick={props.searchForParcel}>Search</Button>
-        </Form>
+          <Button onClick={props.searchForParcelIDButton}>Search</Button>
+        </FormGroup>
+        <FormGroup className="m-1 pt-3">
+          <Label
+            htmlFor="selectedParcelID"
+            className="font-weight-bold text-uppercase"
+          >
+            Selected Parcel
+          </Label>
+          <p>
+            {props.selectedParcelPID == null
+              ? 'No parcel found'
+              : props.selectedParcelPID}
+          </p>
+        </FormGroup>
       </Card>
       <Card className="border-0 pt-2 ml-1 mr-2 pb-3">
-        <Form className="m-1">
-          <FormGroup>
-            <Label
-              htmlFor="selectedParcelID"
-              className="font-weight-bold text-uppercase"
-            >
-              Selected Parcel
-            </Label>
-            <p>{props.selectedParcelPID}</p>
+        <Form>
+          <FormGroup className="m-1">
             <Label
               htmlFor="bufferDistance"
               className="font-weight-bold text-uppercase"
@@ -62,19 +71,27 @@ export default function Filters(props) {
               value={props.bufferDistance}
               className="mb-2"
             />
-            <Button onClick={props.updateParcelBuffer}>Buffer Parcels</Button>
-          </FormGroup>
-          <Label
-            htmlFor="bufferDistance"
-            className="font-weight-bold text-uppercase"
-          >
-            {/* We only show the csv download link if they array has info in it. */}
-            {csvData.length > 0 ? (
-              <CSVLink data={csvData} filename={'mailingList.csv'}>
-                Download Mailing List CSV
-              </CSVLink>
+            {/* {props.selectedParcelPID} */}
+            <Button onClick={props.updateParcelBufferButton}>
+              Buffer Parcels
+            </Button>
+            {props.bufferParcels == null ? (
+              <p>Please select a parcel before buffering.</p>
             ) : null}
-          </Label>
+          </FormGroup>
+          <FormGroup className="m-1 mt-3">
+            <Label
+              htmlFor="bufferDistance"
+              className="font-weight-bold text-uppercase"
+            >
+              {/* We only show the csv download link if they array has info in it. */}
+              {csvData.length > 0 ? (
+                <CSVLink data={csvData} filename={'mailingList.csv'}>
+                  Download Mailing List CSV
+                </CSVLink>
+              ) : null}
+            </Label>
+          </FormGroup>
         </Form>
       </Card>
     </div>
@@ -85,8 +102,10 @@ Filters.propTypes = {
   handleBufferChange: PropTypes.func,
   bufferDistance: PropTypes.number,
   bufferParcels: PropTypes.array,
-  updateParcelBuffer: PropTypes.func,
+  updateParcelBufferButton: PropTypes.func,
   handleParcelIDSearch: PropTypes.func,
   searchedParcelID: PropTypes.string,
-  searchForParcel: PropTypes.func,
+  searchForParcelIDButton: PropTypes.func,
+  selectedParcel: PropTypes.object,
+  ownershipInfo: PropTypes.array,
 };

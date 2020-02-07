@@ -2,40 +2,41 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import getConfig from 'next/config';
 import buffer from '@turf/buffer';
+import bbox from '@turf/bbox';
 // We can't import these server-side because they require "window"
 const MapboxGeocoder = process.browser
   ? require('@mapbox/mapbox-gl-geocoder')
   : null;
 const mapboxgl = process.browser ? require('mapbox-gl') : null;
-
 // Despite using mapboxgl to render the map, we still use esri-leaflet to
 // query to the layer
 const { featureLayer } = process.browser ? require('esri-leaflet') : {};
 const L = process.browser ? require('leaflet') : {};
 
+// We set up the ESRI feature service URL for parcels.
 const parcels_url =
   'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_3857/FeatureServer/0';
 
+const ownership_table_url =
+  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_table_test/FeatureServer/0';
 class Map extends React.Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      selectedParcel: {},
-      selectedParcelPID: '',
-    };
-  }
-
   componentDidMount() {
     this.parcelFeatureLayer = featureLayer({
       url: parcels_url,
     });
 
+    this.ownershipTable = featureLayer({
+      url: ownership_table_url,
+    });
+
     // We update the selected parcel in three circumstances:
     //  1. Someone clicks on the map
     //  2. A searched address location is within a parcel.
-    // Because there are two differnet time we're doing the same thing,
+    //  3. Someone searches for a parcel ID.
+    // Because there are multiple differnet times we're doing the same thing,
     // we break it out into its own function.
+    // The function works the same for scenarios 1 and 2 above - we query which
+    // parcel the searched address location and/or the clicked location falls within.
     const setSelectedParcel = eventLocation => {
       // We use Esri Leaflet to query the parcel feature layer. We're
       // specifically asking for what parcel contains the clicked location.
@@ -52,25 +53,32 @@ class Map extends React.Component {
           // eachother, so we're safe to select the first feature in the returned
           // collection of them.
           const selectedParcel = featureCollection.features[0];
+          // So that we can display the selected parcel ID on the side of the map,
+          // we pass the change to the MapContainer component which can then pass
+          // it down to the Filters component.
+          this.props.handleParcelChange(selectedParcel);
 
           // If the user didn't click a location outside the parcel layer's
           // geometry, we highlight the parcel they selected.
           if (selectedParcel !== undefined) {
             this.map.getSource('highlight').setData(selectedParcel.geometry);
-
-            // So that we can display the selected parcel ID on the side of the map,
-            // we pass the change to the MapContainer component which can then pass
-            // it down to the Filters component.
-            this.props.handleParcelChange(selectedParcel.properties.PID_LONG);
-
-            // We also hold the selected parcel itself (geometry and all)
-            // inside the applications state. This allows us to access it when
-            // the user updates or changes the buffer distance.
-            this.setState({
-              selectedParcel: selectedParcel,
-            });
+            this.map.setLayoutProperty(
+              'highlight-line',
+              'visibility',
+              'visible'
+            );
+            this.map.setLayoutProperty(
+              'highlight-polygon',
+              'visibility',
+              'visible'
+            );
           } else {
-            return;
+            this.map.setLayoutProperty('highlight-line', 'visibility', 'none');
+            this.map.setLayoutProperty(
+              'highlight-polygon',
+              'visibility',
+              'none'
+            );
           }
         });
     };
@@ -343,10 +351,11 @@ class Map extends React.Component {
 
   componentDidUpdate(prevProps) {
     if (
-      prevProps.searchForParcelIDButton != this.props.searchForParcelIDButton
+      prevProps.searchForParcelIDButtonClicked !=
+      this.props.searchForParcelIDButtonClicked
     ) {
       const query = `PID_LONG = '${this.props.searchedParcelID}'`;
-      // TODO: make this into a function with the setParcelId one above.
+
       this.parcelFeatureLayer
         .query()
         .where(query)
@@ -360,77 +369,96 @@ class Map extends React.Component {
           // eachother, so we're safe to select the first feature in the returned
           // collection of them.
           const selectedParcel = featureCollection.features[0];
-          console.log(selectedParcel);
 
-          // If the user didn't click a location outside the parcel layer's
-          // geometry, we highlight the parcel they selected.
+          // We update state so that we can use the selected parcel information in
+          // componenets.
+          this.props.handleParcelChange(selectedParcel);
+
+          // If they searchced for a parcel we have, we highlight and zoom to it.
           if (selectedParcel !== undefined) {
             this.map.getSource('highlight').setData(selectedParcel.geometry);
 
-            // So that we can display the selected parcel ID on the side of the map,
-            // we pass the change to the MapContainer component which can then pass
-            // it down to the Filters component.
-            this.props.handleParcelChange(selectedParcel.properties.PID_LONG);
-
-            // We also hold the selected parcel itself (geometry and all)
-            // inside the applications state. This allows us to access it when
-            // the user updates or changes the buffer distance.
-            this.setState({
-              selectedParcel: selectedParcel,
-            });
+            const layerBounds = bbox(selectedParcel);
+            this.map.fitBounds(layerBounds, { padding: 200 });
           } else {
             return;
           }
         });
-    } else if (prevProps.buttonClicked != this.props.buttonClicked) {
+    } else if (
+      prevProps.bufferButtonClicked != this.props.bufferButtonClicked
+    ) {
       // We're currently using Turf.js to create the buffers and feet isn't an
       // option for units, so we convert the entered value to kilometers.
       // We then use Turf's buffer function to calculate the new geometry and
       // display it on the map.
-      // TODO: Change to using ESRI buffer rest api.
-      const bufferDistanceFeet = this.props.bufferDistance * 0.0003048;
-      const bufferPoly = buffer(
-        this.state.selectedParcel,
-        bufferDistanceFeet,
-        'kilometers'
-      );
-      this.map.getSource('buffer').setData(bufferPoly.geometry);
-      // After we have the new buffer, we update the visability of the
-      // relevant map layers.
-      this.map.setLayoutProperty('buffer-polygon', 'visibility', 'visible');
-      this.map.setLayoutProperty('buffer-line', 'visibility', 'visible');
+      // TODO: Change to using esri buffer rest api.
+      if (this.props.selectedParcel != undefined) {
+        const bufferDistanceFeet = this.props.bufferDistance * 0.0003048;
+        const bufferPoly = buffer(
+          this.props.selectedParcel,
+          bufferDistanceFeet,
+          'kilometers'
+        );
+        this.map.getSource('buffer').setData(bufferPoly.geometry);
+        // After we have the new buffer, we update the visability of the
+        // relevant map layers.
+        this.map.setLayoutProperty('buffer-polygon', 'visibility', 'visible');
+        this.map.setLayoutProperty('buffer-line', 'visibility', 'visible');
 
-      // After we have the buffer, we use its geometry to find the parcels
-      // that intersect it.
-      this.parcelFeatureLayer
-        .query()
-        .intersects(bufferPoly.geometry)
-        .run((error, featureCollection) => {
-          if (error) {
-            // eslint-disable-next-line no-console
-            console.error(error);
-            return;
-          }
+        // After we have the buffer, we use its geometry to find the parcels
+        // that intersect it.
+        this.parcelFeatureLayer
+          .query()
+          .intersects(bufferPoly.geometry)
+          .run((error, featureCollection) => {
+            if (error) {
+              // eslint-disable-next-line no-console
+              console.error(error);
+              return;
+            }
 
-          this.map.getSource('buffer-parcels').setData(featureCollection);
-          // After we set the new source, we make sure the layers displaying the
-          // buffered parcels correctly update the map.
-          this.map.setLayoutProperty(
-            'buffer-parcels-polygon',
-            'visibility',
-            'visible'
-          );
-          this.map.setLayoutProperty(
-            'buffer-parcels-line',
-            'visibility',
-            'visible'
-          );
+            this.map.getSource('buffer-parcels').setData(featureCollection);
+            // After we set the new source, we make sure the layers displaying the
+            // buffered parcels correctly update the map.
+            this.map.setLayoutProperty(
+              'buffer-parcels-polygon',
+              'visibility',
+              'visible'
+            );
+            this.map.setLayoutProperty(
+              'buffer-parcels-line',
+              'visibility',
+              'visible'
+            );
 
-          // We save them to our state so we can use them in the filter
-          // component when we are building the mailing list CSV the user
-          // will download.
-          this.props.handleBufferParcels(featureCollection.features);
-        });
+            // We save them to our state so we can use them in the filter
+            // component when we are building the mailing list CSV the user
+            // will download.
+            this.props.handleBufferParcels(featureCollection.features);
+            const bufferPolygonIDs = [];
+            featureCollection.features.forEach(feature =>
+              bufferPolygonIDs.push(feature.properties.PID_LONG)
+            );
+
+            const queryForOwnership = `PID_LONG IN (${bufferPolygonIDs
+              .map(x => "'" + x + "'")
+              .toString()})`;
+
+            this.ownershipTable
+              .query()
+              .where(queryForOwnership)
+              .run((error, response) => {
+                if (error) {
+                  // eslint-disable-next-line no-console
+                  console.error(error);
+                  return;
+                }
+                this.props.handleOwnershipInfo(response.features);
+              });
+          });
+      } else {
+        this.props.handleBufferParcels(null);
+      }
     }
   }
 
@@ -460,7 +488,8 @@ Map.propTypes = {
   selectedParcel: PropTypes.object,
   bufferDistance: PropTypes.number,
   handleBufferParcels: PropTypes.func,
-  buttonClicked: PropTypes.bool,
+  bufferButtonClicked: PropTypes.bool,
   searchedParcelID: PropTypes.string,
-  searchForParcelIDButton: PropTypes.bool,
+  searchForParcelIDButtonClicked: PropTypes.bool,
+  handleOwnershipInfo: PropTypes.func,
 };

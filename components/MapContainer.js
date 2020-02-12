@@ -68,7 +68,6 @@ class MapContainer extends React.Component {
   };
 
   handleOwnershipInfo = ownershipInfo => {
-    console.log(ownershipInfo);
     this.setState({
       ownershipInfo: ownershipInfo,
     });

@@ -16,7 +16,6 @@ class MapContainer extends React.Component {
       bufferButtonClicked: false,
       searchedParcelID: '',
       searchForParcelIDButtonClicked: false,
-      ownershipInfo: [],
     };
   }
 
@@ -67,12 +66,6 @@ class MapContainer extends React.Component {
       : this.setState({ bufferButtonClicked: true });
   };
 
-  handleOwnershipInfo = ownershipInfo => {
-    this.setState({
-      ownershipInfo: ownershipInfo,
-    });
-  };
-
   render() {
     return (
       <Row>
@@ -87,7 +80,6 @@ class MapContainer extends React.Component {
             handleParcelIDSearch={this.handleParcelIDSearch}
             searchForParcelIDButton={this.searchForParcelIDButton}
             selectedParcel={this.state.selectedParcel}
-            ownershipInfo={this.state.ownershipInfo}
           />
           {/* add legend twice - once for when screen is large screen is small and it should display below the map */}{' '}
           <Col className="p-0 d-none d-lg-block">
@@ -105,7 +97,6 @@ class MapContainer extends React.Component {
               this.state.searchForParcelIDButtonClicked
             }
             selectedParcel={this.state.selectedParcel}
-            handleOwnershipInfo={this.handleOwnershipInfo}
           ></Map>{' '}
           {/* second instance of the legend component for when screen is small */}{' '}
           <Col className="d-sm-block d-md-block d-lg-none pl-0">

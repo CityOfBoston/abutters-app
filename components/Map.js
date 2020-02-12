@@ -15,18 +15,12 @@ const L = process.browser ? require('leaflet') : {};
 
 // We set up the ESRI feature service URL for parcels.
 const parcels_url =
-  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_3857/FeatureServer/0';
+  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_all_testing/FeatureServer/0';
 
-const ownership_table_url =
-  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_table_test/FeatureServer/0';
 class Map extends React.Component {
   componentDidMount() {
     this.parcelFeatureLayer = featureLayer({
       url: parcels_url,
-    });
-
-    this.ownershipTable = featureLayer({
-      url: ownership_table_url,
     });
 
     // We update the selected parcel in three circumstances:
@@ -49,9 +43,9 @@ class Map extends React.Component {
             console.error(error);
             return;
           }
-          // By definition, the spatial parcel layer has no parcels that overlap
-          // eachother, so we're safe to select the first feature in the returned
-          // collection of them.
+          // The parcel layer will have parcels that overlap each other, but they all
+          // use the same master parcel ID and address, since those two pieces of
+          // information are all we need right now, we select the first one.
           const selectedParcel = featureCollection.features[0];
           // So that we can display the selected parcel ID on the side of the map,
           // we pass the change to the MapContainer component which can then pass
@@ -73,6 +67,7 @@ class Map extends React.Component {
               'visible'
             );
           } else {
+            this.props.handleBufferParcels('');
             this.map.setLayoutProperty('highlight-line', 'visibility', 'none');
             this.map.setLayoutProperty(
               'highlight-polygon',
@@ -179,6 +174,43 @@ class Map extends React.Component {
         }
       );
 
+      // We do the same thing as above for the parcels that intersect the
+      // buffer - add one source and two layers (line and poylgon) for
+      // styling.
+      this.map.addSource('buffer-parcels', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [],
+        },
+      });
+
+      this.map.addLayer({
+        id: 'buffer-parcels-polygon',
+        type: 'fill',
+        source: 'buffer-parcels',
+        layout: {},
+        paint: {
+          'fill-color': '#288BE4',
+        },
+        minzoom: 0,
+        maxzoom: 24,
+      });
+
+      this.map.addLayer({
+        id: 'buffer-parcels-line',
+        source: 'buffer-parcels',
+        type: 'line',
+        paint: {
+          'line-width': 2.5,
+          'line-color': '#1f6eb5',
+        },
+        layout: {
+          'line-cap': 'round',
+          'line-join': 'round',
+        },
+      });
+
       // We add another empty geojson source for the buffer polygon. We'll
       // use this layer to display the buffer around the selected parcel.
       // We add a fill and line layer that both use this same source so we have
@@ -218,49 +250,11 @@ class Map extends React.Component {
         },
       });
 
-      // We do the same thing as above for the parcels that intersect the
-      // buffer - add one source and two layers (line and poylgon) for
-      // styling.
-      this.map.addSource('buffer-parcels', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: [],
-        },
-      });
-
-      this.map.addLayer({
-        id: 'buffer-parcels-polygon',
-        type: 'fill',
-        source: 'buffer-parcels',
-        layout: {},
-        paint: {
-          'fill-color': '#288BE4',
-          'fill-opacity': 0.5,
-        },
-        minzoom: 0,
-        maxzoom: 24,
-      });
-
-      this.map.addLayer({
-        id: 'buffer-parcels-line',
-        source: 'buffer-parcels',
-        type: 'line',
-        paint: {
-          'line-width': 2.5,
-          'line-color': '#1f6eb5',
-        },
-        layout: {
-          'line-cap': 'round',
-          'line-join': 'round',
-        },
-      });
-
       // Since we're using lines and polygons to represent the parcels, we want
       // features of all geometries to get highlighted when a user clicks on them,
       // we add two more layers: a highlight-line layer and a highlight-polygon layer.
 
-      // All layers stary out as empty, we style them here then add
+      // All layers start out as empty, we style them here then add
       // data to them when a user clicks on a feature.
       this.map.addSource('highlight', {
         type: 'geojson',
@@ -416,7 +410,6 @@ class Map extends React.Component {
               console.error(error);
               return;
             }
-
             this.map.getSource('buffer-parcels').setData(featureCollection);
             // After we set the new source, we make sure the layers displaying the
             // buffered parcels correctly update the map.
@@ -439,25 +432,9 @@ class Map extends React.Component {
             featureCollection.features.forEach(feature =>
               bufferPolygonIDs.push(feature.properties.PID_LONG)
             );
-
-            const queryForOwnership = `PID_LONG IN (${bufferPolygonIDs
-              .map(x => "'" + x + "'")
-              .toString()})`;
-
-            this.ownershipTable
-              .query()
-              .where(queryForOwnership)
-              .run((error, response) => {
-                if (error) {
-                  // eslint-disable-next-line no-console
-                  console.error(error);
-                  return;
-                }
-                this.props.handleOwnershipInfo(response.features);
-              });
           });
       } else {
-        this.props.handleBufferParcels(null);
+        return;
       }
     }
   }
@@ -491,5 +468,4 @@ Map.propTypes = {
   bufferButtonClicked: PropTypes.bool,
   searchedParcelID: PropTypes.string,
   searchForParcelIDButtonClicked: PropTypes.bool,
-  handleOwnershipInfo: PropTypes.func,
 };

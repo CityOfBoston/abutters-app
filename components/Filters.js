@@ -7,8 +7,8 @@ export default function Filters(props) {
   // We set up an empty array to house the data we'll export to csv.
   const csvData = [];
   // TODO: figure out what fields are actually needed here.
-  if (props.ownershipInfo.length > 1) {
-    props.ownershipInfo.forEach(parcel => csvData.push(parcel.properties));
+  if (props.bufferParcels.length > 1) {
+    props.bufferParcels.forEach(parcel => csvData.push(parcel.properties));
   }
 
   return (
@@ -107,5 +107,4 @@ Filters.propTypes = {
   searchedParcelID: PropTypes.string,
   searchForParcelIDButton: PropTypes.func,
   selectedParcel: PropTypes.object,
-  ownershipInfo: PropTypes.array,
 };

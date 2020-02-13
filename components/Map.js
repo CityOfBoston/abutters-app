@@ -1,7 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import getConfig from 'next/config';
-import buffer from '@turf/buffer';
 import bbox from '@turf/bbox';
 // We can't import these server-side because they require "window"
 const MapboxGeocoder = process.browser
@@ -10,23 +9,20 @@ const MapboxGeocoder = process.browser
 const mapboxgl = process.browser ? require('mapbox-gl') : null;
 // Despite using mapboxgl to render the map, we still use esri-leaflet to
 // query to the layer
-const { featureLayer } = process.browser ? require('esri-leaflet') : {};
+const { featureLayer, request, Util } = process.browser
+  ? require('esri-leaflet')
+  : {};
+
 const L = process.browser ? require('leaflet') : {};
 
 // We set up the ESRI feature service URL for parcels.
 const parcels_url =
-  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_3857/FeatureServer/0';
+  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_all_testing/FeatureServer/0';
 
-const ownership_table_url =
-  'https://services.arcgis.com/sFnw0xNflSi8J0uh/arcgis/rest/services/parcels_table_test/FeatureServer/0';
 class Map extends React.Component {
   componentDidMount() {
     this.parcelFeatureLayer = featureLayer({
       url: parcels_url,
-    });
-
-    this.ownershipTable = featureLayer({
-      url: ownership_table_url,
     });
 
     // We update the selected parcel in three circumstances:
@@ -49,9 +45,9 @@ class Map extends React.Component {
             console.error(error);
             return;
           }
-          // By definition, the spatial parcel layer has no parcels that overlap
-          // eachother, so we're safe to select the first feature in the returned
-          // collection of them.
+          // The parcel layer will have parcels that overlap each other, but they all
+          // use the same master parcel ID and address, since those two pieces of
+          // information are all we need right now, we select the first one.
           const selectedParcel = featureCollection.features[0];
           // So that we can display the selected parcel ID on the side of the map,
           // we pass the change to the MapContainer component which can then pass
@@ -73,6 +69,7 @@ class Map extends React.Component {
               'visible'
             );
           } else {
+            this.props.handleBufferParcels('');
             this.map.setLayoutProperty('highlight-line', 'visibility', 'none');
             this.map.setLayoutProperty(
               'highlight-polygon',
@@ -179,6 +176,43 @@ class Map extends React.Component {
         }
       );
 
+      // We do the same thing as above for the parcels that intersect the
+      // buffer - add one source and two layers (line and poylgon) for
+      // styling.
+      this.map.addSource('buffer-parcels', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [],
+        },
+      });
+
+      this.map.addLayer({
+        id: 'buffer-parcels-polygon',
+        type: 'fill',
+        source: 'buffer-parcels',
+        layout: {},
+        paint: {
+          'fill-color': '#288BE4',
+        },
+        minzoom: 0,
+        maxzoom: 24,
+      });
+
+      this.map.addLayer({
+        id: 'buffer-parcels-line',
+        source: 'buffer-parcels',
+        type: 'line',
+        paint: {
+          'line-width': 2.5,
+          'line-color': '#1f6eb5',
+        },
+        layout: {
+          'line-cap': 'round',
+          'line-join': 'round',
+        },
+      });
+
       // We add another empty geojson source for the buffer polygon. We'll
       // use this layer to display the buffer around the selected parcel.
       // We add a fill and line layer that both use this same source so we have
@@ -218,49 +252,11 @@ class Map extends React.Component {
         },
       });
 
-      // We do the same thing as above for the parcels that intersect the
-      // buffer - add one source and two layers (line and poylgon) for
-      // styling.
-      this.map.addSource('buffer-parcels', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: [],
-        },
-      });
-
-      this.map.addLayer({
-        id: 'buffer-parcels-polygon',
-        type: 'fill',
-        source: 'buffer-parcels',
-        layout: {},
-        paint: {
-          'fill-color': '#288BE4',
-          'fill-opacity': 0.5,
-        },
-        minzoom: 0,
-        maxzoom: 24,
-      });
-
-      this.map.addLayer({
-        id: 'buffer-parcels-line',
-        source: 'buffer-parcels',
-        type: 'line',
-        paint: {
-          'line-width': 2.5,
-          'line-color': '#1f6eb5',
-        },
-        layout: {
-          'line-cap': 'round',
-          'line-join': 'round',
-        },
-      });
-
       // Since we're using lines and polygons to represent the parcels, we want
       // features of all geometries to get highlighted when a user clicks on them,
       // we add two more layers: a highlight-line layer and a highlight-polygon layer.
 
-      // All layers stary out as empty, we style them here then add
+      // All layers start out as empty, we style them here then add
       // data to them when a user clicks on a feature.
       this.map.addSource('highlight', {
         type: 'geojson',
@@ -387,77 +383,89 @@ class Map extends React.Component {
     } else if (
       prevProps.bufferButtonClicked != this.props.bufferButtonClicked
     ) {
-      // We're currently using Turf.js to create the buffers and feet isn't an
-      // option for units, so we convert the entered value to kilometers.
-      // We then use Turf's buffer function to calculate the new geometry and
-      // display it on the map.
-      // TODO: Change to using esri buffer rest api.
       if (this.props.selectedParcel != undefined) {
-        const bufferDistanceFeet = this.props.bufferDistance * 0.0003048;
-        const bufferPoly = buffer(
-          this.props.selectedParcel,
-          bufferDistanceFeet,
-          'kilometers'
-        );
-        this.map.getSource('buffer').setData(bufferPoly.geometry);
-        // After we have the new buffer, we update the visability of the
-        // relevant map layers.
-        this.map.setLayoutProperty('buffer-polygon', 'visibility', 'visible');
-        this.map.setLayoutProperty('buffer-line', 'visibility', 'visible');
-
-        // After we have the buffer, we use its geometry to find the parcels
-        // that intersect it.
-        this.parcelFeatureLayer
-          .query()
-          .intersects(bufferPoly.geometry)
-          .run((error, featureCollection) => {
+        // We use the ESRI rest api to buffer the selected parcel. It requires
+        // inputs in the ESRI json format, so we leverage esri leaflet to convert
+        // the geojson we have to the necessary format.
+        const esriJson = Util.geojsonToArcGIS(this.props.selectedParcel);
+        request(
+          `http://gis.cityofboston.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/buffer`,
+          {
+            geometries: {
+              geometryType: 'esriGeometryPolygon',
+              // We pass just the geometry of the feature to the request as an array.
+              geometries: [esriJson.geometry],
+            },
+            // Our map is in Web Mercator, so we indicate that is what we are passing
+            // and what we want back.
+            inSR: 4326,
+            outSR: 4326,
+            // We want the actual buffer to be calculated in 2249 (the MA State Plane
+            // NAD 1983 Feet coordinate system). This is much more reliable for calculations
+            // MA than 4326.
+            bufferSR: 2249,
+            // We use the buffer distance the user enters
+            distances: this.props.bufferDistance,
+            // We set the unit of this distances to US Survery Feet.
+            unit: 9003,
+            unionResults: true,
+          },
+          (error, response) => {
             if (error) {
               // eslint-disable-next-line no-console
               console.error(error);
               return;
             }
+            // An array of geometries is returned, since we're always unioning the results
+            // (see param above), we can confidently always select the first result in the
+            // array as our buffer.
+            // We have to convert that back to geojson for it to be displayed on our map.
+            const bufferPoly = Util.arcgisToGeoJSON(response.geometries[0]);
+            this.map.getSource('buffer').setData(bufferPoly);
 
-            this.map.getSource('buffer-parcels').setData(featureCollection);
-            // After we set the new source, we make sure the layers displaying the
-            // buffered parcels correctly update the map.
+            // After we have the new buffer, we update the visability of the
+            // relevant map layers.
             this.map.setLayoutProperty(
-              'buffer-parcels-polygon',
+              'buffer-polygon',
               'visibility',
               'visible'
             );
-            this.map.setLayoutProperty(
-              'buffer-parcels-line',
-              'visibility',
-              'visible'
-            );
+            this.map.setLayoutProperty('buffer-line', 'visibility', 'visible');
 
-            // We save them to our state so we can use them in the filter
-            // component when we are building the mailing list CSV the user
-            // will download.
-            this.props.handleBufferParcels(featureCollection.features);
-            const bufferPolygonIDs = [];
-            featureCollection.features.forEach(feature =>
-              bufferPolygonIDs.push(feature.properties.PID_LONG)
-            );
-
-            const queryForOwnership = `PID_LONG IN (${bufferPolygonIDs
-              .map(x => "'" + x + "'")
-              .toString()})`;
-
-            this.ownershipTable
+            // After we have the buffer, we use its geometry to find the parcels
+            // that intersect it.
+            this.parcelFeatureLayer
               .query()
-              .where(queryForOwnership)
-              .run((error, response) => {
+              .intersects(bufferPoly)
+              .run((error, featureCollection) => {
                 if (error) {
                   // eslint-disable-next-line no-console
                   console.error(error);
                   return;
                 }
-                this.props.handleOwnershipInfo(response.features);
+                this.map.getSource('buffer-parcels').setData(featureCollection);
+                // After we set the new source, we make sure the layers displaying the
+                // buffered parcels correctly update the map.
+                this.map.setLayoutProperty(
+                  'buffer-parcels-polygon',
+                  'visibility',
+                  'visible'
+                );
+                this.map.setLayoutProperty(
+                  'buffer-parcels-line',
+                  'visibility',
+                  'visible'
+                );
+
+                // We save them to our state so we can use them in the filter
+                // component when we are building the mailing list CSV the user
+                // will download.
+                this.props.handleBufferParcels(featureCollection.features);
               });
-          });
+          }
+        );
       } else {
-        this.props.handleBufferParcels(null);
+        return;
       }
     }
   }
@@ -491,5 +499,4 @@ Map.propTypes = {
   bufferButtonClicked: PropTypes.bool,
   searchedParcelID: PropTypes.string,
   searchForParcelIDButtonClicked: PropTypes.bool,
-  handleOwnershipInfo: PropTypes.func,
 };

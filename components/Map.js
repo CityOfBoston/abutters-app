@@ -1,7 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import getConfig from 'next/config';
-import buffer from '@turf/buffer';
 import bbox from '@turf/bbox';
 // We can't import these server-side because they require "window"
 const MapboxGeocoder = process.browser
@@ -10,7 +9,10 @@ const MapboxGeocoder = process.browser
 const mapboxgl = process.browser ? require('mapbox-gl') : null;
 // Despite using mapboxgl to render the map, we still use esri-leaflet to
 // query to the layer
-const { featureLayer } = process.browser ? require('esri-leaflet') : {};
+const { featureLayer, request, Util } = process.browser
+  ? require('esri-leaflet')
+  : {};
+
 const L = process.browser ? require('leaflet') : {};
 
 // We set up the ESRI feature service URL for parcels.
@@ -381,58 +383,87 @@ class Map extends React.Component {
     } else if (
       prevProps.bufferButtonClicked != this.props.bufferButtonClicked
     ) {
-      // We're currently using Turf.js to create the buffers and feet isn't an
-      // option for units, so we convert the entered value to kilometers.
-      // We then use Turf's buffer function to calculate the new geometry and
-      // display it on the map.
-      // TODO: Change to using esri buffer rest api.
       if (this.props.selectedParcel != undefined) {
-        const bufferDistanceFeet = this.props.bufferDistance * 0.0003048;
-        const bufferPoly = buffer(
-          this.props.selectedParcel,
-          bufferDistanceFeet,
-          'kilometers'
-        );
-        this.map.getSource('buffer').setData(bufferPoly.geometry);
-        // After we have the new buffer, we update the visability of the
-        // relevant map layers.
-        this.map.setLayoutProperty('buffer-polygon', 'visibility', 'visible');
-        this.map.setLayoutProperty('buffer-line', 'visibility', 'visible');
-
-        // After we have the buffer, we use its geometry to find the parcels
-        // that intersect it.
-        this.parcelFeatureLayer
-          .query()
-          .intersects(bufferPoly.geometry)
-          .run((error, featureCollection) => {
+        // We use the ESRI rest api to buffer the selected parcel. It requires
+        // inputs in the ESRI json format, so we leverage esri leaflet to convert
+        // the geojson we have to the necessary format.
+        const esriJson = Util.geojsonToArcGIS(this.props.selectedParcel);
+        request(
+          `http://gis.cityofboston.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/buffer`,
+          {
+            geometries: {
+              geometryType: 'esriGeometryPolygon',
+              // We pass just the geometry of the feature to the request as an array.
+              geometries: [esriJson.geometry],
+            },
+            // Our map is in Web Mercator, so we indicate that is what we are passing
+            // and what we want back.
+            inSR: 4326,
+            outSR: 4326,
+            // We want the actual buffer to be calculated in 2249 (the MA State Plane
+            // NAD 1983 Feet coordinate system). This is much more reliable for calculations
+            // MA than 4326.
+            bufferSR: 2249,
+            // We use the buffer distance the user enters
+            distances: this.props.bufferDistance,
+            // We set the unit of this distances to US Survery Feet.
+            unit: 9003,
+            unionResults: true,
+          },
+          (error, response) => {
             if (error) {
               // eslint-disable-next-line no-console
               console.error(error);
               return;
             }
-            this.map.getSource('buffer-parcels').setData(featureCollection);
-            // After we set the new source, we make sure the layers displaying the
-            // buffered parcels correctly update the map.
-            this.map.setLayoutProperty(
-              'buffer-parcels-polygon',
-              'visibility',
-              'visible'
-            );
-            this.map.setLayoutProperty(
-              'buffer-parcels-line',
-              'visibility',
-              'visible'
-            );
+            // An array of geometries is returned, since we're always unioning the results
+            // (see param above), we can confidently always select the first result in the
+            // array as our buffer.
+            // We have to convert that back to geojson for it to be displayed on our map.
+            const bufferPoly = Util.arcgisToGeoJSON(response.geometries[0]);
+            this.map.getSource('buffer').setData(bufferPoly);
 
-            // We save them to our state so we can use them in the filter
-            // component when we are building the mailing list CSV the user
-            // will download.
-            this.props.handleBufferParcels(featureCollection.features);
-            const bufferPolygonIDs = [];
-            featureCollection.features.forEach(feature =>
-              bufferPolygonIDs.push(feature.properties.PID_LONG)
+            // After we have the new buffer, we update the visability of the
+            // relevant map layers.
+            this.map.setLayoutProperty(
+              'buffer-polygon',
+              'visibility',
+              'visible'
             );
-          });
+            this.map.setLayoutProperty('buffer-line', 'visibility', 'visible');
+
+            // After we have the buffer, we use its geometry to find the parcels
+            // that intersect it.
+            this.parcelFeatureLayer
+              .query()
+              .intersects(bufferPoly)
+              .run((error, featureCollection) => {
+                if (error) {
+                  // eslint-disable-next-line no-console
+                  console.error(error);
+                  return;
+                }
+                this.map.getSource('buffer-parcels').setData(featureCollection);
+                // After we set the new source, we make sure the layers displaying the
+                // buffered parcels correctly update the map.
+                this.map.setLayoutProperty(
+                  'buffer-parcels-polygon',
+                  'visibility',
+                  'visible'
+                );
+                this.map.setLayoutProperty(
+                  'buffer-parcels-line',
+                  'visibility',
+                  'visible'
+                );
+
+                // We save them to our state so we can use them in the filter
+                // component when we are building the mailing list CSV the user
+                // will download.
+                this.props.handleBufferParcels(featureCollection.features);
+              });
+          }
+        );
       } else {
         return;
       }

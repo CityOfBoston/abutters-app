@@ -1,18 +1,19 @@
 import React from 'react';
 import { Col, Row } from 'reactstrap';
 import Filters from '../components/Filters';
-import Legend from '../components/Legend';
 import Map from '../components/Map';
 
+// We leverage this MapContainer component to pass information between the
+// Map and Filters.
 class MapContainer extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      selectedParcel: undefined,
+      selectedParcel: null,
       selectedParcelPID: '',
       bufferDistance: 0,
-      bufferParcels: '',
+      bufferParcels: [],
       bufferButtonClicked: false,
       searchedParcelID: '',
       searchForParcelIDButtonClicked: false,
@@ -21,7 +22,7 @@ class MapContainer extends React.Component {
 
   // Update state when parcel is selected.
   handleParcelChange = parcel => {
-    parcel != undefined
+    parcel != null
       ? this.setState({
           selectedParcel: parcel,
           selectedParcelPID: parcel.properties.PID_LONG,
@@ -34,9 +35,7 @@ class MapContainer extends React.Component {
 
   // Update state when parcel ID is changed.
   handleParcelIDSearch = e => {
-    this.setState({
-      searchedParcelID: e.target.value,
-    });
+    this.setState({ searchedParcelID: e.target.value });
   };
 
   // Update state when "Search" button is clicked when looking for parcel ID.
@@ -48,18 +47,15 @@ class MapContainer extends React.Component {
 
   // Update state when buffer distance is updated.
   handleBufferChange = e => {
-    this.setState({
-      bufferDistance: e.target.value,
-    });
+    this.setState({ bufferDistance: e.target.value });
   };
 
   // Update state when we have parcels for the mailing list.
   handleBufferParcels = parcels => {
-    this.setState({
-      bufferParcels: parcels,
-    });
+    this.setState({ bufferParcels: parcels });
   };
 
+  // Update state when buffer button clicked.
   updateParcelBufferButton = () => {
     this.state.bufferButtonClicked == true
       ? this.setState({ bufferButtonClicked: false })
@@ -81,11 +77,7 @@ class MapContainer extends React.Component {
             searchForParcelIDButton={this.searchForParcelIDButton}
             selectedParcel={this.state.selectedParcel}
           />
-          {/* add legend twice - once for when screen is large screen is small and it should display below the map */}{' '}
-          <Col className="p-0 d-none d-lg-block">
-            <Legend />
-          </Col>{' '}
-        </Col>{' '}
+        </Col>
         <Col lg="9" className="p-lg-0 pr-md-5 pl-md-5">
           <Map
             handleParcelChange={this.handleParcelChange}
@@ -97,12 +89,8 @@ class MapContainer extends React.Component {
               this.state.searchForParcelIDButtonClicked
             }
             selectedParcel={this.state.selectedParcel}
-          ></Map>{' '}
-          {/* second instance of the legend component for when screen is small */}{' '}
-          <Col className="d-sm-block d-md-block d-lg-none pl-0">
-            <Legend />
-          </Col>{' '}
-        </Col>{' '}
+          ></Map>
+        </Col>
       </Row>
     );
   }

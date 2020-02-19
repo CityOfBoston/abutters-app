@@ -29,10 +29,9 @@ class Map extends React.Component {
     //  1. Someone clicks on the map
     //  2. A searched address location is within a parcel.
     //  3. Someone searches for a parcel ID.
-    // Because there are multiple differnet times we're doing the same thing,
-    // we break it out into its own function.
     // The function works the same for scenarios 1 and 2 above - we query which
-    // parcel the searched address location and/or the clicked location falls within.
+    // parcel the searched address location and/or the clicked location falls within
+    // so we break it into its own function.
     const setSelectedParcel = eventLocation => {
       // We use Esri Leaflet to query the parcel feature layer. We're
       // specifically asking for what parcel contains the clicked location.
@@ -132,16 +131,8 @@ class Map extends React.Component {
       accessToken: accessToken,
       flyTo: {
         bearing: 0,
-        // These options control the flight curve, making it move
-        // slowly and zoom out almost completely before starting
-        // to pan.
-        speed: 5, // make the flying faster
-        curve: 1, // change the speed at which it zooms out
-        // This can be any easing function: it takes a number between
-        // 0 and 1 and returns another number between 0 and 1.
-        easing: function(t) {
-          return t;
-        },
+        speed: 5, // Make the flying faster.
+        curve: 1, // Change the speed at which it zooms out.
       },
       placeholder: 'Search for an address…',
       country: 'us',
@@ -150,6 +141,7 @@ class Map extends React.Component {
       // We need the minX, minY, maxX, maxY in that order.
       bbox: [-71.216812, 42.226992, -70.986099, 42.395573],
       zoom: 18,
+      mapboxgl: this.map,
     });
 
     // We want the geocoder div to show up in the Filters component so we've added
@@ -158,13 +150,14 @@ class Map extends React.Component {
     document.getElementById('geocoder').appendChild(geocoder.onAdd(this.map));
 
     this.map.on('load', () => {
-      // When the map loads, we do a lot of of setting up so that we have layers
-      // to update when the user starts interacting with the map.
+      // When the map loads, we do a lot of of setting up empty layers so that
+      // we have layers to update when the user starts interacting with the map.
+      // The order that these layers are added in defines their drawing order on
+      // the map, so we add the ones we want on the bottom first.
 
       // For starters, we load up the icon we're using for showing geocoder results.
       this.map.loadImage(
-        ///abutters-app
-        '/static/red-waypoint.png',
+        '/abutters-app/static/red-waypoint.png',
         (error, image) => {
           if (error)
             // eslint-disable-next-line no-console
@@ -217,8 +210,6 @@ class Map extends React.Component {
       // use this layer to display the buffer around the selected parcel.
       // We add a fill and line layer that both use this same source so we have
       // more granular control over the styling.
-      // The order that these layers are added in defines their drawing order on
-      // the map, so we add the ones we want on the bottom first.
       this.map.addSource('buffer', {
         type: 'geojson',
         data: {
@@ -255,9 +246,6 @@ class Map extends React.Component {
       // Since we're using lines and polygons to represent the parcels, we want
       // features of all geometries to get highlighted when a user clicks on them,
       // we add two more layers: a highlight-line layer and a highlight-polygon layer.
-
-      // All layers start out as empty, we style them here then add
-      // data to them when a user clicks on a feature.
       this.map.addSource('highlight', {
         type: 'geojson',
         data: {

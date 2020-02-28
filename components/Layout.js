@@ -31,7 +31,7 @@ export default class Layout extends React.Component {
             href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
           />
           {/* When developing locally, this needs to be ./static/abutters-app.css. */}
-          <link rel="stylesheet" href="./abutters-app.css" />
+          <link rel="stylesheet" href="/abutters-app/static/abutters-app.css" />
           <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0"

@@ -466,10 +466,7 @@ class Map extends React.Component {
     return (
       <div>
         {/* make map take up entire viewport with room for the navbars */}
-        <div
-          style={{ height: 'calc(100vh - 125px)' }}
-          ref={el => (this.mapContainer = el)}
-        >
+        <div style={{ height: '100vh' }} ref={el => (this.mapContainer = el)}>
           <div style={{ zIndex: 1000, position: 'absolute' }}></div>
         </div>
       </div>

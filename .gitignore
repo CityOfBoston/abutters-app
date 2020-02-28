@@ -26,3 +26,6 @@ chrome-user-data
 todo.txt
 out/
 .vscode/
+.env
+todo.txt
+mailingList.csv

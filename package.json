@@ -1,5 +1,5 @@
 {
-  "name": "vision-zero",
+  "name": "abutters-app",
   "version": "0.0.0",
   "description": "",
   "license": "CC0-1.0",
@@ -9,15 +9,20 @@
     "deploy": "next build && next export && touch out/.nojekyll && gh-pages -d out --dotfiles"
   },
   "dependencies": {
+    "@mapbox/mapbox-gl-geocoder": "^4.5.1",
+    "@turf/buffer": "^4.7.3",
     "bootstrap": "^4.3.1",
     "date-fns": "^1.30.1",
+    "dotenv": "^8.2.0",
     "esri-leaflet": "^2.3.0",
+    "esri-leaflet-gp": "^2.0.3",
     "font-awesome": "^4.7.0",
     "glyphicons": "^0.2.0",
     "leaflet": "^1.5.1",
     "mapbox-gl": "^0.47.0",
     "next": "^6.1.2",
     "react": "^16.8.6",
+    "react-csv": "^1.1.2",
     "react-dom": "^16.8.6",
     "react-fontawesome": "^1.6.1",
     "react-leaflet": "^1.9.1",

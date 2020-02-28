@@ -1,7 +1,7 @@
 import React from 'react';
 import Head from 'next/head';
 import PropTypes from 'prop-types';
-import { Navbar, NavbarBrand } from 'reactstrap';
+import { Navbar } from 'reactstrap';
 
 export default class Layout extends React.Component {
   render() {
@@ -30,74 +30,26 @@ export default class Layout extends React.Component {
             rel="stylesheet"
             href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
           />
+          {/* When developing locally, this needs to be ./static/abutters-app.css. */}
+          <link rel="stylesheet" href="/abutters/static/abutters-app.css" />
           <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0"
           />
         </Head>
-        {/* Make sure the heigh of the body element is the entire view port */}
-        <style global jsx>{`
-          // set fonts for elements
-          body,
-          h2,
-          h3,
-          h4,
-          h5,
-          label {
-            font-family: 'Montserrat';
-          }
-          p,
-          input {
-            font-family: 'Lora';
-            font-size: 18px;
-          }
-
-          // update link styles
-          a:hover {
-            text-decoration: none;
-            color: #fb4d42;
-          }
-
-          // pop-up styles
-          .dl-t {
-            width: 50%;
-            clear: none;
-          }
-          .dl-d {
-            width: 100%;
-          }
-          .dl-i {
-            padding: 0.2rem !important;
-          }
-
-          // filter button styles
-          .btn-outline-primary {
-            color: #091f2f;
-            border-color: #d2d2d2;
-          }
-          .btn {
-            border-radius: 0;
-          }
-          .btn-outline-primary.active,
-          .btn-outline-primary:active,
-          .btn-outline-primary:hover {
-            background-color: #288be4 !important;
-            border-color: #d2d2d2 !important;
-          }
-          .form-control {
-            border-radius: 0;
-            border-color: #d2d2d2;
-          }
-        `}</style>
-        {/* set container div with room for navbar  */}
+        {/* Make sure the height of the body element is the entire view port and 
+        set container div with room for navbar  */}
         <div style={{ minHeight: 'calc(100vh - 125px)' }}>
           <Navbar>
-            <NavbarBrand href="http://www.visionzeroboston.org/">
-              <img
-                src="/vision-zero/static/VisionZeroLogo.png"
-                style={{ width: '10em' }}
-              />
-            </NavbarBrand>
+            <div>
+              <h1
+                className="d-inline-block text-uppercase font-weight-bold mb-0 mt-1"
+                style={{ letterSpacing: '1px' }}
+              >
+                Abutters Application
+              </h1>
+            </div>
+            <img src="" style={{ width: '10em' }} />
             <div className="lo">
               <div className="lo-l">
                 <a href="https://www.boston.gov/">
@@ -131,7 +83,7 @@ export default class Layout extends React.Component {
                   className={`nv-s-l-a ${
                     this.props.indexPage ? 'nv-s-l-a--active' : ''
                   }`}
-                  href="/vision-zero/"
+                  href="/abutters-app/"
                 >
                   View the map
                 </a>
@@ -139,18 +91,9 @@ export default class Layout extends React.Component {
               <li className="nv-s-l-i">
                 <a
                   className="nv-s-l-a"
-                  href="https://data.boston.gov/dataset/vision-zero-crash-records"
+                  href="https://www.cityofboston.gov/assessing/search/"
                 >
-                  Get the crash data
-                </a>
-              </li>
-              <li className="nv-s-l-i">
-                {/* waiting on link to fatality open dataset */}
-                <a
-                  className="nv-s-l-a"
-                  href="https://data.boston.gov/dataset/vision-zero-fatality-records"
-                >
-                  Get the fatality data
+                  Assessing Online
                 </a>
               </li>
               <li className="nv-s-l-i">
@@ -158,7 +101,7 @@ export default class Layout extends React.Component {
                   className={`nv-s-l-a ${
                     this.props.aboutPage ? 'nv-s-l-a--active' : ''
                   }`}
-                  href="/vision-zero/about"
+                  href="/abutters-app/about"
                 >
                   About
                 </a>

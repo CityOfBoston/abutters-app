@@ -141,7 +141,6 @@ class Map extends React.Component {
       // We need the minX, minY, maxX, maxY in that order.
       bbox: [-71.216812, 42.226992, -70.986099, 42.395573],
       zoom: 18,
-      mapboxgl: this.map,
     });
 
     // We want the geocoder div to show up in the Filters component so we've added

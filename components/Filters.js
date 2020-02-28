@@ -1,122 +1,110 @@
 import React from 'react';
+import { Card, Form, FormGroup, Input, Label, Button } from 'reactstrap';
 import PropTypes from 'prop-types';
-import {
-  Button,
-  ButtonGroup,
-  Card,
-  Form,
-  FormGroup,
-  Input,
-  Label,
-  Row,
-} from 'reactstrap';
-import FontAwesome from 'react-fontawesome';
+import { CSVLink } from 'react-csv';
 
 export default function Filters(props) {
+  // We set up an empty array to house the data we'll export to csv.
+  const csvData = [];
+  // TODO: figure out what fields are actually needed here.
+  if (props.bufferParcels.length > 1) {
+    props.bufferParcels.forEach(parcel => csvData.push(parcel.properties));
+  }
+
   return (
     <div>
-      <Row className="ml-1">
-        <h5 className="mt-3 font-weight-bold text-uppercase">Filter crashes</h5>
-      </Row>
-      <Card className="border-0">
-        {/* buttons for mode selection */}
-        <ButtonGroup className="m-1" color="primary">
-          <Button
-            outline
-            color="primary"
-            onClick={() => props.modeChange('mv')}
-            active={props.modeSelection === 'mv'}
-            className="w-25"
+      <Card className="border-0 pt-4 ml-1 mr-2">
+        <Label
+          htmlFor="geocoder"
+          className="font-weight-bold text-uppercase m-1"
+        >
+          Address Search
+        </Label>
+        <div id="geocoder" style={{ width: '100%' }} className="m-1" />
+        <FormGroup className="m-1 pt-3">
+          <Label
+            htmlFor="parcelIdSearch"
+            className="font-weight-bold text-uppercase"
           >
-            <FontAwesome name="car" />
-          </Button>
-          <Button
-            outline
-            color="primary"
-            onClick={() => props.modeChange('ped')}
-            active={props.modeSelection === 'ped'}
-            className="w-25"
+            Parcel Search
+          </Label>
+          <Input
+            id="parcelIdSearch"
+            type="text"
+            onChange={props.handleParcelIDSearch}
+            name="parcelID"
+            value={props.searchedParcelID}
+            className="mb-2"
+          ></Input>
+          <Button onClick={props.searchForParcelIDButton}>Search</Button>
+        </FormGroup>
+        <FormGroup className="m-1 pt-3">
+          <Label
+            htmlFor="selectedParcelID"
+            className="font-weight-bold text-uppercase"
           >
-            <FontAwesome name="street-view" />
-          </Button>
-          <Button
-            outline
-            color="primary"
-            onClick={() => props.modeChange('bike')}
-            active={props.modeSelection === 'bike'}
-            className="w-25"
-          >
-            <FontAwesome name="bicycle" />
-          </Button>
-          <Button
-            outline
-            color="primary"
-            onClick={() => props.modeChange('all')}
-            active={props.modeSelection === 'all'}
-            className="w-25"
-          >
-            All
-          </Button>
-        </ButtonGroup>
-        {/* buttons for dataset selection */}
-        <ButtonGroup className="m-1" color="primary">
-          <Button
-            outline
-            color="primary"
-            onClick={() => props.datasetChange('crash')}
-            active={props.dataset === 'crash'}
-            className="w-50"
-          >
-            Crashes
-          </Button>
-          <Button
-            outline
-            color="primary"
-            onClick={() => props.datasetChange('fatality')}
-            active={props.dataset === 'fatality'}
-            className="w-50"
-          >
-            Fatalities
-          </Button>
-        </ButtonGroup>
-        {/* form for date selection */}
-        <Form className="m-1">
-          <FormGroup>
-            <Label htmlFor="from" className="font-weight-bold text-uppercase">
-              From Date:
+            Selected Parcel
+          </Label>
+          <p>
+            {props.selectedParcelPID == null
+              ? 'No parcel found'
+              : props.selectedParcelPID}
+          </p>
+        </FormGroup>
+      </Card>
+      <Card className="border-0 pt-2 ml-1 mr-2 pb-3">
+        <Form>
+          <FormGroup className="m-1">
+            <Label
+              htmlFor="bufferDistance"
+              className="font-weight-bold text-uppercase"
+            >
+              Buffer Distance
             </Label>
             <Input
-              id="from"
-              type="date"
-              onChange={props.fromChange}
-              name="from"
-              value={props.fromDate}
+              id="bufferDistance"
+              type="number"
+              min={0}
+              max={100000}
+              onChange={props.handleBufferChange}
+              name="bufferDistance"
+              value={props.bufferDistance}
               className="mb-2"
             />
-            <Label htmlFor="to" className="font-weight-bold text-uppercase">
-              To Date:
+            {/* {props.selectedParcelPID} */}
+            <Button onClick={props.updateParcelBufferButton}>
+              Buffer Parcels
+            </Button>
+            {props.bufferParcels == null ? (
+              <p>Please select a parcel before buffering.</p>
+            ) : null}
+          </FormGroup>
+          <FormGroup className="m-1 mt-3">
+            <Label
+              htmlFor="bufferDistance"
+              className="font-weight-bold text-uppercase"
+            >
+              {/* We only show the csv download link if they array has info in it. */}
+              {csvData.length > 0 ? (
+                <CSVLink data={csvData} filename={'mailingList.csv'}>
+                  Download Mailing List CSV
+                </CSVLink>
+              ) : null}
             </Label>
-            <Input
-              id="to"
-              type="date"
-              onChange={props.toChange}
-              name="to"
-              value={props.toDate}
-            />
           </FormGroup>
         </Form>
       </Card>
     </div>
   );
 }
-
 Filters.propTypes = {
-  fromDate: PropTypes.string,
-  fromChange: PropTypes.func,
-  toDate: PropTypes.string,
-  toChange: PropTypes.func,
-  modeSelection: PropTypes.string,
-  modeChange: PropTypes.func,
-  dataset: PropTypes.string,
-  datasetChange: PropTypes.func,
+  selectedParcelPID: PropTypes.string,
+  handleBufferChange: PropTypes.func,
+  bufferDistance: PropTypes.number,
+  bufferParcels: PropTypes.array,
+  updateParcelBufferButton: PropTypes.func,
+  handleParcelIDSearch: PropTypes.func,
+  searchedParcelID: PropTypes.string,
+  searchForParcelIDButton: PropTypes.func,
+  selectedParcel: PropTypes.object,
 };

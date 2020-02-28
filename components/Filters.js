@@ -13,12 +13,17 @@ export default function Filters(props) {
 
   return (
     <div>
-      <Card className="border-0 pt-4 ml-1 mr-2">
+      <Card className="border-0 pt-4 ml-2 m-1 pt-3">
+        <p className="mb-2" style={{ 'font-size': '16px' }}>
+          Search for an address or enter a parcel ID below.
+        </p>
+      </Card>
+      <Card className="border-0 ml-1 mr-2">
         <Label
           htmlFor="geocoder"
           className="font-weight-bold text-uppercase m-1"
         >
-          Address Search
+          <h6>Address Search</h6>
         </Label>
         <div id="geocoder" style={{ width: '100%' }} className="m-1" />
         <FormGroup className="m-1 pt-3">
@@ -26,7 +31,7 @@ export default function Filters(props) {
             htmlFor="parcelIdSearch"
             className="font-weight-bold text-uppercase"
           >
-            Parcel Search
+            <h6>Parcel Search</h6>
           </Label>
           <Input
             id="parcelIdSearch"
@@ -36,30 +41,37 @@ export default function Filters(props) {
             value={props.searchedParcelID}
             className="mb-2"
           ></Input>
-          <Button onClick={props.searchForParcelIDButton}>Search</Button>
+          <Button className="pr-2 pl-2" onClick={props.searchForParcelIDButton}>
+            Search
+          </Button>
         </FormGroup>
         <FormGroup className="m-1 pt-3">
           <Label
             htmlFor="selectedParcelID"
             className="font-weight-bold text-uppercase"
           >
-            Selected Parcel
+            <h6>Selected Parcel</h6>
           </Label>
-          <p>
+          <p className="mb-2">
             {props.selectedParcelPID == null
               ? 'No parcel found'
               : props.selectedParcelPID}
           </p>
         </FormGroup>
       </Card>
-      <Card className="border-0 pt-2 ml-1 mr-2 pb-3">
+      <Card className="border-0 pt-0 ml-2 m-1 pt-3">
+        <p className="mb-2" style={{ 'font-size': '16px' }}>
+          Enter a buffer distance and a the mailing list csv will appear below.
+        </p>
+      </Card>
+      <Card className="border-0 ml-1 mr-2 pb-3">
         <Form>
           <FormGroup className="m-1">
             <Label
               htmlFor="bufferDistance"
               className="font-weight-bold text-uppercase"
             >
-              Buffer Distance
+              <h6>Buffer Distance (feet)</h6>
             </Label>
             <Input
               id="bufferDistance"
@@ -73,7 +85,7 @@ export default function Filters(props) {
             />
             {/* {props.selectedParcelPID} */}
             <Button onClick={props.updateParcelBufferButton}>
-              Buffer Parcels
+              Buffer Parcel
             </Button>
             {props.bufferParcels == null ? (
               <p>Please select a parcel before buffering.</p>

@@ -14,63 +14,56 @@ export default function Filters(props) {
   return (
     <div>
       <Card className="border-0 pt-4 ml-2 m-1 pt-3">
-        <p className="mb-2" style={{ 'font-size': '16px' }}>
+        <p className="mb-2" style={{ fontSize: '16px' }}>
           Search for an address or enter a parcel ID below.
         </p>
       </Card>
       <Card className="border-0 ml-1 mr-2">
-        <Label
-          htmlFor="geocoder"
-          className="font-weight-bold text-uppercase m-1"
-        >
+        <Label htmlFor="geocoder" className="text-uppercase m-1">
           <h6>Address Search</h6>
         </Label>
         <div id="geocoder" style={{ width: '100%' }} className="m-1" />
         <FormGroup className="m-1 pt-3">
-          <Label
-            htmlFor="parcelIdSearch"
-            className="font-weight-bold text-uppercase"
-          >
+          <Label htmlFor="parcelIdSearch" className="text-uppercase">
             <h6>Parcel Search</h6>
           </Label>
-          <Input
-            id="parcelIdSearch"
-            type="text"
-            onChange={props.handleParcelIDSearch}
-            name="parcelID"
-            value={props.searchedParcelID}
-            className="mb-2"
-          ></Input>
-          <Button className="pr-2 pl-2" onClick={props.searchForParcelIDButton}>
-            Search
-          </Button>
+          <div id="parcelIDSearchWrapper" className="input-group">
+            <Input
+              id="parcelIdSearch"
+              type="text"
+              onChange={props.handleParcelIDSearch}
+              name="parcelID"
+              value={props.searchedParcelID}
+            ></Input>
+            <Button
+              id="parcelIDSearchButton"
+              onClick={props.searchForParcelIDButton}
+              className="ml-1"
+            >
+              Search
+            </Button>
+          </div>
         </FormGroup>
         <FormGroup className="m-1 pt-3">
-          <Label
-            htmlFor="selectedParcelID"
-            className="font-weight-bold text-uppercase"
-          >
+          <Label htmlFor="selectedParcelID" className="text-uppercase">
             <h6>Selected Parcel</h6>
           </Label>
           <p className="mb-2">
-            {props.selectedParcelPID == null
+            {props.selectedParcel == null
               ? 'No parcel found'
-              : props.selectedParcelPID}
+              : `${props.selectedParcelPID} - ${props.selectedParcel.properties.FULL_ADDRE}`}
           </p>
         </FormGroup>
       </Card>
       <Card className="border-0 pt-0 ml-2 m-1 pt-3">
-        <p className="mb-2" style={{ 'font-size': '16px' }}>
+        <p className="mb-2" style={{ fontSize: '16px' }}>
           Enter a buffer distance and a the mailing list csv will appear below.
         </p>
       </Card>
       <Card className="border-0 ml-1 mr-2 pb-3">
         <Form>
           <FormGroup className="m-1">
-            <Label
-              htmlFor="bufferDistance"
-              className="font-weight-bold text-uppercase"
-            >
+            <Label htmlFor="bufferDistance" className="text-uppercase">
               <h6>Buffer Distance (feet)</h6>
             </Label>
             <Input

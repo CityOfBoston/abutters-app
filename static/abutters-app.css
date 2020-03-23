@@ -7,6 +7,11 @@ h5,
 label {
   font-family: 'Montserrat', sans-serif;
 }
+Label > h6 {
+  font-weight: 700;
+  letter-spacing: .05em;
+  margin-bottom: 0px;
+}
 p,
 input {
   font-family: 'Lora', serif;
@@ -104,6 +109,22 @@ a:hover {
 }
 .suggestions li:hover {
   background-color: #e0e0e0;
+}
+/* Set parcel search styles. */
+#parcelIdSearch {
+  background-color: transparent;
+  background-position: right;
+  background-size: 20px 20px;
+  position: relative;
+  height: auto;
+  border: none;
+  border-bottom: 2px solid #091f2f;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 16px;
+  padding: 0px;
 }
 /* Set button styles. */
 .btn {

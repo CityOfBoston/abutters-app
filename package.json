@@ -9,7 +9,7 @@
     "deploy": "next build && next export && touch out/.nojekyll && gh-pages -d out --dotfiles"
   },
   "dependencies": {
-    "@mapbox/mapbox-gl-geocoder": "^4.5.1",
+    "@mapbox/mapbox-gl-geocoder": "^4.7.4",
     "@turf/buffer": "^4.7.3",
     "bootstrap": "^4.3.1",
     "date-fns": "^1.30.1",

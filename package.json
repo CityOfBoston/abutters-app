@@ -20,7 +20,7 @@
     "glyphicons": "^0.2.0",
     "leaflet": "^1.5.1",
     "mapbox-gl": "^0.47.0",
-    "next": "^6.1.2",
+    "next": "^13.4.1",
     "react": "^16.8.6",
     "react-csv": "^1.1.2",
     "react-dom": "^16.8.6",
